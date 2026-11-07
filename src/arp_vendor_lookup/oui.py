@@ -55,20 +55,43 @@ def bundled_data_dir() -> Path | None:
     return None
 
 
+def _download(url: str, timeout: float, retries: int, progress: Callable[[str], None] | None) -> bytes:
+    delay = 5.0
+    for attempt in range(1, retries + 1):
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = resp.read()
+            if len(data) < 1000:
+                raise OSError(f"response too small ({len(data)} bytes)")
+            return data
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            if attempt == retries:
+                raise
+            if progress:
+                progress(f"  attempt {attempt} failed ({exc}); retrying in {delay:.0f}s")
+            time.sleep(delay)
+            delay *= 2
+    raise RuntimeError("unreachable")
+
+
 def update_database(
     cache_dir: Path | None = None,
     progress: Callable[[str], None] | None = None,
     timeout: float = 60,
+    retries: int = 4,
 ) -> Path:
-    """Download the IEEE registries into the cache folder."""
+    """Download the IEEE registries into the cache folder.
+
+    IEEE's server occasionally refuses or drops requests, so each file is
+    retried with backoff before giving up.
+    """
     cache_dir = cache_dir or default_cache_dir()
     cache_dir.mkdir(parents=True, exist_ok=True)
     for name, url in IEEE_SOURCES.items():
         if progress:
             progress(f"Downloading {name} from IEEE...")
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = resp.read()
+        data = _download(url, timeout, retries, progress)
         tmp = cache_dir / (name + ".part")
         tmp.write_bytes(data)
         tmp.replace(cache_dir / name)

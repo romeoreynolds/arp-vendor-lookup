@@ -16,7 +16,27 @@ permissions:
   contents: write
 
 jobs:
+  # Fetch the IEEE registries once and share them with every build, so all
+  # platforms bundle the same data and IEEE is only hit once per run.
+  vendor-db:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install .
+      - name: Download IEEE vendor database
+        run: |
+          python -c "from pathlib import Path; from arp_vendor_lookup.oui import update_database; update_database(Path('oui_data'), progress=print)"
+          ls -la oui_data
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oui_data
+          path: oui_data
+
   build:
+    needs: vendor-db
     strategy:
       fail-fast: false
       matrix:
@@ -40,10 +60,10 @@ jobs:
       - name: Install
         run: pip install pyinstaller .
 
-      - name: Download IEEE vendor database to bundle
-        run: |
-          python -c "from pathlib import Path; from arp_vendor_lookup.oui import update_database; update_database(Path('packaging/oui_data'), progress=print)"
-          ls -la packaging/oui_data
+      - uses: actions/download-artifact@v4
+        with:
+          name: oui_data
+          path: packaging/oui_data
 
       - name: Build (Windows / Linux single file)
         if: runner.os != 'macOS'
@@ -88,6 +108,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
+          pattern: ARP-Vendor-Lookup-*
           path: assets
           merge-multiple: true
       - name: Make Linux file executable inside a tarball
