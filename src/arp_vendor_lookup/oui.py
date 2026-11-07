@@ -45,6 +45,16 @@ def default_cache_dir() -> Path:
     return base / "arp-vendor-lookup"
 
 
+def bundled_data_dir() -> Path | None:
+    """Folder holding registries packed into a standalone (PyInstaller) build."""
+    base = getattr(sys, "_MEIPASS", None)
+    if base:
+        path = Path(base) / "oui_data"
+        if path.is_dir():
+            return path
+    return None
+
+
 def update_database(
     cache_dir: Path | None = None,
     progress: Callable[[str], None] | None = None,
@@ -75,8 +85,15 @@ class VendorLookup:
     Results are cached in memory, so duplicate MACs cost nothing.
     """
 
-    def __init__(self, cache_dir: Path | None = None, online: bool = False, timeout: float = 5):
+    def __init__(
+        self,
+        cache_dir: Path | None = None,
+        online: bool = False,
+        timeout: float = 5,
+        bundled_dir: Path | None = None,
+    ):
         self.cache_dir = cache_dir or default_cache_dir()
+        self.bundled_dir = bundled_dir if bundled_dir is not None else bundled_data_dir()
         self.online = online
         self.timeout = timeout
         self._prefixes: dict[str, str] = {}
@@ -87,13 +104,22 @@ class VendorLookup:
 
     # -- database ---------------------------------------------------------
     def load(self) -> int:
-        """(Re)load registry files from the cache folder. Returns entry count."""
+        """(Re)load registry files. Returns entry count.
+
+        Each registry file is taken from the user's cache folder if present
+        (freshest, written by update_database), otherwise from the copy bundled
+        inside a standalone build.
+        """
         self._prefixes.clear()
         self._memo.clear()
+        self.source = None
         for name in IEEE_SOURCES:
-            path = self.cache_dir / name
-            if path.exists():
-                self._load_csv(path.read_text(encoding="utf-8", errors="replace"))
+            for folder, label in ((self.cache_dir, "cache"), (self.bundled_dir, "bundled")):
+                path = folder / name if folder else None
+                if path and path.exists():
+                    self._load_csv(path.read_text(encoding="utf-8", errors="replace"))
+                    self.source = self.source or label
+                    break
         return len(self._prefixes)
 
     def _load_csv(self, text: str) -> None:

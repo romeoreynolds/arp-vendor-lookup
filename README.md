@@ -39,7 +39,25 @@ devices on a segment, and documenting what's plugged into a client network.
 Example output for each is in [`samples/`](samples). Anything else with an IPv4 address and a MAC
 on the same line will usually work too.
 
-## Install
+## Download (no Python needed)
+
+Grab the app for your system from the **[latest release](https://github.com/romeoreynolds/arp-vendor-lookup/releases/latest)**.
+The vendor database is built in, so it works offline right away.
+
+| OS | File | First launch |
+|---|---|---|
+| Windows 10/11 | `ARP-Vendor-Lookup-windows.exe` | Double-click. If SmartScreen appears: **More info → Run anyway** |
+| macOS (Apple Silicon) | `ARP-Vendor-Lookup-macos.zip` | Unzip, then **right-click the app → Open → Open** (only needed once) |
+| Linux (x86_64) | `ARP-Vendor-Lookup-linux.tar.gz` | `tar xzf ARP-Vendor-Lookup-linux.tar.gz`, then double-click or run `./ARP-Vendor-Lookup-linux` |
+
+The apps are unsigned, which is why Windows and macOS warn on first launch. Each release includes
+`SHA256SUMS.txt` so you can verify your download, and every build is produced by the public
+[release workflow](.github/workflows/release.yml) from the source in this repo.
+
+On macOS and Linux the same file also works as a CLI when given arguments:
+`./ARP-Vendor-Lookup-linux dump.txt -f csv`.
+
+## Install from source
 
 Requires Python 3.10+. Tkinter ships with Python on Windows and macOS; on Debian/Ubuntu run
 `sudo apt install python3-tk` for the GUI.

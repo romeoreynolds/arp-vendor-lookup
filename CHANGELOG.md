@@ -15,6 +15,8 @@ Rewrite of the original `MAClist1_1.py` (kept in `legacy/`).
   progress bar, file open, copy and CSV export.
 - New CLI with table/CSV/JSON output and stdin support.
 - Packaged with pyproject.toml, test suite, CI on Windows/macOS/Linux.
+- One-click standalone apps for Windows, macOS and Linux with the IEEE vendor
+  database built in, published on GitHub Releases.
 
 ## 1.1
 

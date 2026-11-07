@@ -10,3 +10,4 @@ venv/
 # Real ARP dumps can contain client network data - keep them out of the repo
 *.local.txt
 dumps/
+packaging/oui_data/

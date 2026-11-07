@@ -76,3 +76,24 @@ def test_cli_file_to_csv(cache, tmp_path, capsys):
     lines = out.read_text().splitlines()
     assert lines[1].startswith("10.20.0.1,00:09:0F:09:00:01,")
     assert len(lines) == 4
+
+
+def test_bundled_db_used_when_cache_empty(tmp_path):
+    bundled = tmp_path / "bundled"
+    bundled.mkdir()
+    shutil.copy(FIXTURES / "oui.csv", bundled / "oui.csv")
+    lk = VendorLookup(cache_dir=tmp_path / "empty-cache", bundled_dir=bundled)
+    assert lk.source == "bundled"
+    assert lk.lookup("00:50:56:A1:B2:C3") == "VMware, Inc."
+
+
+def test_cache_overrides_bundled(tmp_path):
+    bundled = tmp_path / "bundled"
+    cache_dir = tmp_path / "cache"
+    bundled.mkdir()
+    cache_dir.mkdir()
+    (bundled / "oui.csv").write_text("Registry,Assignment,Organization Name,Address\nMA-L,005056,Old Name,x\n")
+    (cache_dir / "oui.csv").write_text("Registry,Assignment,Organization Name,Address\nMA-L,005056,New Name,x\n")
+    lk = VendorLookup(cache_dir=cache_dir, bundled_dir=bundled)
+    assert lk.source == "cache"
+    assert lk.lookup("00:50:56:00:00:01") == "New Name"

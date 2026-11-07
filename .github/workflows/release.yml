@@ -1,0 +1,108 @@
+name: release
+
+# Builds one-click apps for Windows, macOS and Linux and attaches them to a
+# GitHub Release. Runs when a version tag (v1.2.3) is pushed, or manually.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            asset: ARP-Vendor-Lookup-windows.exe
+          - os: macos-latest          # Apple Silicon
+            asset: ARP-Vendor-Lookup-macos.zip
+          - os: ubuntu-22.04          # older glibc = runs on more distros
+            asset: ARP-Vendor-Lookup-linux
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install pyinstaller .
+
+      - name: Download IEEE vendor database to bundle
+        run: |
+          python -c "from pathlib import Path; from arp_vendor_lookup.oui import update_database; update_database(Path('packaging/oui_data'), progress=print)"
+          ls -la packaging/oui_data
+
+      - name: Build (Windows / Linux single file)
+        if: runner.os != 'macOS'
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --name ARP-Vendor-Lookup \
+            --add-data "packaging/oui_data:oui_data" packaging/launcher.py
+          ext=""; [ "$RUNNER_OS" = "Windows" ] && ext=".exe"
+          mv "dist/ARP-Vendor-Lookup$ext" "dist/${{ matrix.asset }}"
+
+      - name: Build (macOS .app)
+        if: runner.os == 'macOS'
+        run: |
+          pyinstaller --noconfirm --windowed --name ARP-Vendor-Lookup \
+            --osx-bundle-identifier io.github.romeoreynolds.arpvendorlookup \
+            --add-data "packaging/oui_data:oui_data" packaging/launcher.py
+          ditto -c -k --keepParent dist/ARP-Vendor-Lookup.app "dist/${{ matrix.asset }}"
+
+      - name: Smoke test (bundled DB, no cache)
+        if: runner.os != 'Windows'
+        env:
+          HOME: ${{ runner.temp }}/fresh-home
+          XDG_CACHE_HOME: ${{ runner.temp }}/fresh-home/.cache
+        run: |
+          mkdir -p "$HOME"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            BIN=dist/ARP-Vendor-Lookup.app/Contents/MacOS/ARP-Vendor-Lookup
+          else
+            BIN="dist/${{ matrix.asset }}"; chmod +x "$BIN"
+          fi
+          "$BIN" samples/paloalto_panos.txt | tee out.txt
+          grep -q "Fortinet" out.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Make Linux file executable inside a tarball
+        run: |
+          chmod +x assets/ARP-Vendor-Lookup-linux
+          tar -C assets -czf assets/ARP-Vendor-Lookup-linux.tar.gz ARP-Vendor-Lookup-linux
+          rm assets/ARP-Vendor-Lookup-linux
+          (cd assets && sha256sum * > SHA256SUMS.txt)
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: assets/*
+          generate_release_notes: true
+          body: |
+            ## Download
+
+            | OS | File | First launch |
+            |---|---|---|
+            | Windows 10/11 | `ARP-Vendor-Lookup-windows.exe` | If SmartScreen appears: **More info → Run anyway** |
+            | macOS (Apple Silicon) | `ARP-Vendor-Lookup-macos.zip` | Unzip, **right-click the app → Open → Open** |
+            | Linux (x86_64) | `ARP-Vendor-Lookup-linux.tar.gz` | `tar xzf` it, then double-click or run `./ARP-Vendor-Lookup-linux` |
+
+            The IEEE vendor database is built in, so lookups work offline right away.
+            Builds are unsigned; verify downloads against `SHA256SUMS.txt`.
