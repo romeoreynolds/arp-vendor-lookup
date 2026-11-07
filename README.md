@@ -1,7 +1,7 @@
 # ARP Vendor Lookup
 
 [![tests](https://github.com/romeoreynolds/arp-vendor-lookup/actions/workflows/tests.yml/badge.svg)](https://github.com/romeoreynolds/arp-vendor-lookup/actions/workflows/tests.yml)
-![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 
@@ -41,7 +41,7 @@ on the same line will usually work too.
 
 ## Install
 
-Requires Python 3.9+. Tkinter ships with Python on Windows and macOS; on Debian/Ubuntu run
+Requires Python 3.10+. Tkinter ships with Python on Windows and macOS; on Debian/Ubuntu run
 `sudo apt install python3-tk` for the GUI.
 
 ```bash

@@ -9,7 +9,7 @@ description = "Resolve MAC addresses in ARP tables (Windows, Linux, macOS, Cisco
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Romeo Reynolds" }]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = []
 keywords = ["arp", "mac", "oui", "vendor", "network", "security", "asset-inventory"]
 classifiers = [
