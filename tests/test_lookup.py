@@ -97,3 +97,60 @@ def test_cache_overrides_bundled(tmp_path):
     lk = VendorLookup(cache_dir=cache_dir, bundled_dir=bundled)
     assert lk.source == "cache"
     assert lk.lookup("00:50:56:00:00:01") == "New Name"
+
+
+MANUF_SAMPLE = (
+    "# Wireshark manuf sample\n"
+    "00:00:0C\tCisco\tCisco Systems, Inc\n"
+    "00:50:56\tVMware\tVMware, Inc.\n"
+    "00:1B:C5:00:00:00/36\tConvergi\tConverging Systems Inc.\n"
+    "70:B3:D5:10:00:00/28\tShortOnly\n"
+    "garbage line\n"
+)
+
+
+def test_manuf_conversion_feeds_lookup(tmp_path):
+    from arp_vendor_lookup.oui import manuf_to_registry_csvs
+
+    files = manuf_to_registry_csvs(MANUF_SAMPLE)
+    for name, content in files.items():
+        (tmp_path / name).write_text(content)
+    lk = VendorLookup(cache_dir=tmp_path, bundled_dir=None)
+    assert lk.lookup("00:00:0C:12:34:56") == "Cisco Systems, Inc"
+    assert lk.lookup("00:1B:C5:00:00:99") == "Converging Systems Inc."
+    assert lk.lookup("70:B3:D5:1A:BC:DE") == "ShortOnly"
+
+
+def test_update_falls_back_to_wireshark(tmp_path, monkeypatch):
+    import urllib.error
+    from arp_vendor_lookup import oui
+
+    big_manuf = MANUF_SAMPLE + "".join(f"AA:{i // 256:02X}:{i % 256:02X}\tV{i}\tVendor {i}\n" for i in range(12000))
+
+    def fake_download(url, timeout, retries, progress):
+        if "ieee.org" in url:
+            raise urllib.error.HTTPError(url, 418, "I'm a teapot", None, None)
+        assert url == oui.WIRESHARK_MANUF
+        return big_manuf.encode()
+
+    monkeypatch.setattr(oui, "_download", fake_download)
+    messages = []
+    oui.update_database(tmp_path, progress=messages.append)
+    assert "source: Wireshark" in messages[-1]
+    lk = VendorLookup(cache_dir=tmp_path, bundled_dir=None)
+    assert lk.lookup("00:50:56:AA:BB:CC") == "VMware, Inc."
+
+
+def test_update_keeps_old_files_if_everything_fails(tmp_path, monkeypatch):
+    import urllib.error
+    from arp_vendor_lookup import oui
+
+    (tmp_path / "oui.csv").write_text("Registry,Assignment,Organization Name,Address\nMA-L,005056,Kept,x\n")
+
+    def fail(url, *a):
+        raise urllib.error.URLError("offline")
+
+    monkeypatch.setattr(oui, "_download", fail)
+    with pytest.raises(OSError):
+        oui.update_database(tmp_path)
+    assert VendorLookup(cache_dir=tmp_path, bundled_dir=None).lookup("00:50:56:00:00:01") == "Kept"

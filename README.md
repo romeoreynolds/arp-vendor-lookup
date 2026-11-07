@@ -133,7 +133,8 @@ IP Address   MAC Address        Vendor              Notes
    (24-bit) registries, most specific first, so vendors with small sub-allocations are named
    correctly.
 
-The database is cached in `~/.cache/arp-vendor-lookup` (Linux), `~/Library/Caches/arp-vendor-lookup`
+If IEEE's server refuses the download, the same data is fetched from Wireshark's published copy
+of the IEEE registry instead. The database is cached in `~/.cache/arp-vendor-lookup` (Linux), `~/Library/Caches/arp-vendor-lookup`
 (macOS) or `%LOCALAPPDATA%\arp-vendor-lookup` (Windows). Set `ARP_VENDOR_CACHE` to use another folder.
 
 ## Project layout

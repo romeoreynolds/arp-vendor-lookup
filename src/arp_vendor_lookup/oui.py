@@ -27,6 +27,9 @@ IEEE_SOURCES = {
     "oui36.csv": "https://standards-oui.ieee.org/oui36/oui36.csv",    # MA-S /36
 }
 
+# Fallback: Wireshark's vendor list, regenerated from the IEEE registries.
+WIRESHARK_MANUF = "https://www.wireshark.org/download/automated/data/manuf"
+
 ONLINE_API = "https://api.macvendors.com/{mac}"
 ONLINE_MIN_INTERVAL = 1.05  # free tier allows ~1 request/second
 
@@ -85,28 +88,89 @@ def _download(url: str, timeout: float, retries: int, progress: Callable[[str], 
     raise RuntimeError("unreachable")
 
 
+_MASK_TO_FILE = {24: ("oui.csv", "MA-L", 6), 28: ("mam.csv", "MA-M", 7), 36: ("oui36.csv", "MA-S", 9)}
+_CSV_HEADER = "Registry,Assignment,Organization Name,Organization Address\n"
+
+
+def manuf_to_registry_csvs(text: str) -> dict[str, str]:
+    """Convert Wireshark's ``manuf`` file into IEEE-style registry CSVs.
+
+    manuf lines look like ``00:00:0C<TAB>Cisco<TAB>Cisco Systems, Inc`` or,
+    for smaller blocks, ``00:1B:C5:00:00:00/36<TAB>Short<TAB>Long Name``.
+    """
+    rows: dict[str, list[list[str]]] = {name: [] for name, _, _ in _MASK_TO_FILE.values()}
+    for line in text.splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        fields = line.split("\t")
+        if len(fields) < 2:
+            continue
+        prefix, _, mask = fields[0].strip().partition("/")
+        hexstr = prefix.replace(":", "").replace("-", "").replace(".", "").upper()
+        bits = int(mask) if mask else 24
+        if bits not in _MASK_TO_FILE or not all(c in "0123456789ABCDEF" for c in hexstr):
+            continue
+        name, registry, length = _MASK_TO_FILE[bits]
+        if len(hexstr) < length:
+            continue
+        vendor = (fields[2] if len(fields) > 2 and fields[2].strip() else fields[1]).strip()
+        rows[name].append([registry, hexstr[:length], vendor, ""])
+    out = {}
+    for name, entries in rows.items():
+        buf = io.StringIO()
+        buf.write(_CSV_HEADER)
+        csv.writer(buf, lineterminator="\n").writerows(entries)
+        out[name] = buf.getvalue()
+    return out
+
+
+def _fetch_ieee(timeout, retries, progress) -> dict[str, bytes]:
+    files = {}
+    for name, url in IEEE_SOURCES.items():
+        if progress:
+            progress(f"Downloading {name} from IEEE...")
+        files[name] = _download(url, timeout, retries, progress)
+    return files
+
+
+def _fetch_wireshark(timeout, retries, progress) -> dict[str, bytes]:
+    if progress:
+        progress("Downloading vendor list from Wireshark (IEEE mirror)...")
+    text = _download(WIRESHARK_MANUF, timeout, retries, progress).decode("utf-8", errors="replace")
+    files = {name: content.encode("utf-8") for name, content in manuf_to_registry_csvs(text).items()}
+    if files["oui.csv"].count(b"\n") < 10000:
+        raise OSError("Wireshark vendor list looks incomplete")
+    return files
+
+
 def update_database(
     cache_dir: Path | None = None,
     progress: Callable[[str], None] | None = None,
     timeout: float = 60,
-    retries: int = 4,
+    retries: int = 3,
 ) -> Path:
-    """Download the IEEE registries into the cache folder.
+    """Download the vendor registries into the cache folder.
 
-    IEEE's server occasionally refuses or drops requests, so each file is
-    retried with backoff before giving up.
+    Tries IEEE first. IEEE's server often refuses automated downloads, so if
+    it fails the same data is taken from Wireshark's published copy. Files are
+    only replaced once a full set has downloaded.
     """
     cache_dir = cache_dir or default_cache_dir()
     cache_dir.mkdir(parents=True, exist_ok=True)
-    for name, url in IEEE_SOURCES.items():
+    try:
+        files = _fetch_ieee(timeout, retries, progress)
+        source = "IEEE"
+    except (urllib.error.URLError, TimeoutError, OSError) as ieee_exc:
         if progress:
-            progress(f"Downloading {name} from IEEE...")
-        data = _download(url, timeout, retries, progress)
+            progress(f"IEEE download failed ({ieee_exc}); trying Wireshark mirror...")
+        files = _fetch_wireshark(timeout, retries, progress)
+        source = "Wireshark"
+    for name, data in files.items():
         tmp = cache_dir / (name + ".part")
         tmp.write_bytes(data)
         tmp.replace(cache_dir / name)
     if progress:
-        progress("OUI database updated.")
+        progress(f"OUI database updated (source: {source}).")
     return cache_dir
 
 

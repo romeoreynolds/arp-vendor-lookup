@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.1 - 2026-11-07
+
+- **Update OUI DB** now falls back to Wireshark's copy of the IEEE vendor list when
+  IEEE's server refuses the download (it often blocks automated requests). Existing
+  data is only replaced after a complete download.
+
 ## 2.1.0 - 2026-11-07
 
 - **Debian package** (`.deb`) for Debian 12+, Ubuntu 22.04+, Kali and Raspberry Pi OS:
