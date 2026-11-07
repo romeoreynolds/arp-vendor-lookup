@@ -1,0 +1,13 @@
+admin@PA-440> show arp all
+
+maximum of entries supported :      1500
+default timeout:                    1800 seconds
+total ARP entries in table :        3
+total ARP entries shown :           3
+status: s - static, c - complete, e - expiring, i - incomplete
+
+interface         ip address      hw address          port              status   ttl
+--------------------------------------------------------------------------------
+ethernet1/2       10.20.0.1       00:09:0f:09:00:01   ethernet1/2       c        1650
+ethernet1/2       10.20.0.15      00:50:56:a1:b2:c3   ethernet1/2       c        1201
+ethernet1/3       10.30.0.8       f0:9f:c2:10:20:30   ethernet1/3       c        900

@@ -1,0 +1,4 @@
+FGT # get system arp
+Address           Age(min)   Hardware Addr      Interface
+10.40.0.1         0          00:1b:17:00:01:10  port1
+10.40.0.22        3          b8:27:eb:12:34:56  internal

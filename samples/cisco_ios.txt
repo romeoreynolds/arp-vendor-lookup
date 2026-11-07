@@ -1,0 +1,6 @@
+Router# show ip arp
+Protocol  Address          Age (min)  Hardware Addr   Type   Interface
+Internet  10.10.10.1              -   001a.a100.0001  ARPA   Vlan10
+Internet  10.10.10.25            12   0050.56a1.b2c3  ARPA   Vlan10
+Internet  10.10.10.30             3   8815.4401.0203  ARPA   Vlan10
+Internet  10.10.10.40             0   Incomplete      ARPA

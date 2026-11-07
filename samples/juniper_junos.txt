@@ -1,0 +1,5 @@
+user@srx> show arp no-resolve
+MAC Address       Address         Interface         Flags
+00:05:85:00:00:01 10.50.0.1       ge-0/0/0.0        none
+00:0c:29:ab:cd:ef 10.50.0.30      ge-0/0/1.0        none
+Total entries: 2
