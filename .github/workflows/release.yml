@@ -9,7 +9,7 @@ on:
     types: [published]
   push:
     branches: [main]
-    paths: ["src/**", "packaging/**", ".github/workflows/release.yml"]
+    paths: ["src/**", "packaging/**", ".github/workflows/release.yml", "pyproject.toml"]
   workflow_dispatch:
 
 permissions:
@@ -101,8 +101,47 @@ jobs:
           name: ${{ matrix.asset }}
           path: dist/${{ matrix.asset }}
 
+  deb:
+    needs: vendor-db
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: oui_data
+          path: oui_data
+      - name: Work out version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            V="${{ github.event.release.tag_name }}"; V="${V#v}"
+          else
+            V=$(grep -Po '^version = "\K[^"]+' pyproject.toml)
+          fi
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+      - name: Build .deb
+        run: packaging/debian/build_deb.sh "$VERSION" oui_data dist
+      - name: Test install on Debian 12 and 13
+        run: |
+          for img in debian:12 debian:13; do
+            echo "::group::$img"
+            docker run --rm -v "$PWD:/w" "$img" bash -ec "
+              apt-get update -qq
+              apt-get install -y -qq /w/dist/arp-vendor-lookup_${VERSION}_all.deb > /dev/null
+              arpvendor /w/samples/paloalto_panos.txt | tee /tmp/out.txt
+              grep -q Fortinet /tmp/out.txt
+              python3 -c 'import arp_vendor_lookup.gui, tkinter; print(\"GUI imports OK\")'
+              apt-get remove -y -qq arp-vendor-lookup > /dev/null
+              test ! -e /usr/bin/arpvendor && echo 'Clean uninstall OK'
+            "
+            echo "::endgroup::"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ARP-Vendor-Lookup-deb
+          path: dist/*.deb
+
   release:
-    needs: build
+    needs: [build, deb]
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
     steps:
@@ -129,7 +168,8 @@ jobs:
             |---|---|---|
             | Windows 10/11 | `ARP-Vendor-Lookup-windows.exe` | If SmartScreen appears: **More info → Run anyway** |
             | macOS (Apple Silicon) | `ARP-Vendor-Lookup-macos.zip` | Unzip, **right-click the app → Open → Open** |
-            | Linux (x86_64) | `ARP-Vendor-Lookup-linux.tar.gz` | `tar xzf` it, then double-click or run `./ARP-Vendor-Lookup-linux` |
+            | Debian 12+ / Ubuntu / Kali / Raspberry Pi OS | `arp-vendor-lookup_*_all.deb` | `sudo apt install ./arp-vendor-lookup_*_all.deb`, then open **ARP Vendor Lookup** from the app menu |
+            | Other Linux (x86_64) | `ARP-Vendor-Lookup-linux.tar.gz` | `tar xzf` it, then double-click or run `./ARP-Vendor-Lookup-linux` |
 
             The IEEE vendor database is built in, so lookups work offline right away.
             Builds are unsigned; verify downloads against `SHA256SUMS.txt`.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.0 - 2026-11-07
+
+- **Debian package** (`.deb`) for Debian 12+, Ubuntu 22.04+, Kali and Raspberry Pi OS:
+  installs via apt, adds an app-menu entry and the `arpvendor` command, and bundles
+  the IEEE vendor database. Tested on Debian 12 and 13 in CI.
+- Release builds fetch the IEEE database once and retry on failure.
+
 ## 2.0.0 - 2026-11-07
 
 Rewrite of the original `MAClist1_1.py` (kept in `legacy/`).

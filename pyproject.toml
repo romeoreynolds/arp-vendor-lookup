@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arp-vendor-lookup"
-version = "2.0.0"
+version = "2.1.0"
 description = "Resolve MAC addresses in ARP tables (Windows, Linux, macOS, Cisco, Palo Alto, Fortinet, Juniper) to hardware vendors - offline first."
 readme = "README.md"
 license = { text = "MIT" }

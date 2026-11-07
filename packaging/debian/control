@@ -1,0 +1,17 @@
+Package: arp-vendor-lookup
+Version: @VERSION@
+Section: net
+Priority: optional
+Architecture: all
+Depends: python3 (>= 3.10), python3-tk
+Installed-Size: @SIZE@
+Maintainer: Romeo Reynolds <romeoreynolds@users.noreply.github.com>
+Homepage: https://github.com/romeoreynolds/arp-vendor-lookup
+Description: resolve MAC addresses in ARP tables to hardware vendors
+ Paste ARP output from Windows, Linux, macOS, Cisco IOS, Palo Alto PAN-OS,
+ Fortinet or Juniper and get a clean IP / MAC / vendor list.
+ .
+ Vendor names come from the IEEE OUI registries bundled with the package,
+ so lookups work offline and MAC addresses never leave the machine.
+ Includes a Tk GUI (arpvendor-gui) and a CLI (arpvendor) with table,
+ CSV and JSON output.

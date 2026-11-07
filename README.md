@@ -48,13 +48,18 @@ The vendor database is built in, so it works offline right away.
 |---|---|---|
 | Windows 10/11 | `ARP-Vendor-Lookup-windows.exe` | Double-click. If SmartScreen appears: **More info → Run anyway** |
 | macOS (Apple Silicon) | `ARP-Vendor-Lookup-macos.zip` | Unzip, then **right-click the app → Open → Open** (only needed once) |
-| Linux (x86_64) | `ARP-Vendor-Lookup-linux.tar.gz` | `tar xzf ARP-Vendor-Lookup-linux.tar.gz`, then double-click or run `./ARP-Vendor-Lookup-linux` |
+| Debian 12+, Ubuntu 22.04+, Kali, Raspberry Pi OS | `arp-vendor-lookup_<version>_all.deb` | `sudo apt install ./arp-vendor-lookup_*_all.deb`, then open **ARP Vendor Lookup** from the app menu or run `arpvendor` |
+| Other Linux (x86_64) | `ARP-Vendor-Lookup-linux.tar.gz` | `tar xzf ARP-Vendor-Lookup-linux.tar.gz`, then double-click or run `./ARP-Vendor-Lookup-linux` |
 
 The apps are unsigned, which is why Windows and macOS warn on first launch. Each release includes
 `SHA256SUMS.txt` so you can verify your download, and every build is produced by the public
 [release workflow](.github/workflows/release.yml) from the source in this repo.
 
-On macOS and Linux the same file also works as a CLI when given arguments:
+The `.deb` uses Debian's own Python and Tk (installed automatically by apt), so it is about
+1 MB and works on ARM boards like the Raspberry Pi too. Remove it with
+`sudo apt remove arp-vendor-lookup`.
+
+On macOS and Linux the one-click file also works as a CLI when given arguments:
 `./ARP-Vendor-Lookup-linux dump.txt -f csv`.
 
 ## Install from source

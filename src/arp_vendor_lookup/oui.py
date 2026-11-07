@@ -45,11 +45,21 @@ def default_cache_dir() -> Path:
     return base / "arp-vendor-lookup"
 
 
+SYSTEM_DATA_DIRS = (
+    Path("/usr/share/arp-vendor-lookup/oui_data"),        # .deb package
+    Path("/usr/local/share/arp-vendor-lookup/oui_data"),
+)
+
+
 def bundled_data_dir() -> Path | None:
-    """Folder holding registries packed into a standalone (PyInstaller) build."""
-    base = getattr(sys, "_MEIPASS", None)
+    """Folder holding registries shipped with a standalone build or OS package."""
+    candidates = []
+    base = getattr(sys, "_MEIPASS", None)  # PyInstaller one-click apps
     if base:
-        path = Path(base) / "oui_data"
+        candidates.append(Path(base) / "oui_data")
+    if not sys.platform.startswith("win"):
+        candidates.extend(SYSTEM_DATA_DIRS)
+    for path in candidates:
         if path.is_dir():
             return path
     return None

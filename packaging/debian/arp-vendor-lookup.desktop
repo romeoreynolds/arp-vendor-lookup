@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=ARP Vendor Lookup
+GenericName=MAC Vendor Lookup
+Comment=Identify devices in an ARP table by hardware vendor
+Exec=arpvendor-gui
+Icon=arp-vendor-lookup
+Terminal=false
+Categories=Network;System;Utility;
+Keywords=arp;mac;oui;vendor;network;security;
